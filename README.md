@@ -90,6 +90,119 @@ python -m app.init_db
 python wsgi.py
 ```
 
+## Domain Configuration
+
+### Using Nginx as Reverse Proxy
+
+1. Install Nginx:
+   - Windows: Download from [Nginx website](http://nginx.org/en/download.html)
+   - Linux: `sudo apt-get install nginx`
+   - macOS: `brew install nginx`
+
+2. Create Nginx configuration file:
+   ```bash
+   sudo nano /etc/nginx/sites-available/user-management-api
+   ```
+
+3. Add the following configuration:
+   ```nginx
+   server {
+       listen 80;
+       server_name api.yourdomain.com;  # Replace with your domain
+
+       location / {
+           proxy_pass http://localhost:5000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+
+4. Enable the site:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/user-management-api /etc/nginx/sites-enabled/
+   sudo nginx -t  # Test configuration
+   sudo systemctl restart nginx
+   ```
+
+### Using Gunicorn as WSGI Server
+
+1. Install Gunicorn:
+   ```bash
+   pip install gunicorn
+   ```
+
+2. Create a systemd service file:
+   ```bash
+   sudo nano /etc/systemd/system/user-management-api.service
+   ```
+
+3. Add the following configuration:
+   ```ini
+   [Unit]
+   Description=User Management API
+   After=network.target
+
+   [Service]
+   User=youruser
+   WorkingDirectory=/path/to/user-management-api
+   Environment="PATH=/path/to/user-management-api/venv/bin"
+   ExecStart=/path/to/user-management-api/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 wsgi:app
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+4. Start and enable the service:
+   ```bash
+   sudo systemctl start user-management-api
+   sudo systemctl enable user-management-api
+   ```
+
+### SSL Configuration with Let's Encrypt
+
+1. Install Certbot:
+   ```bash
+   sudo apt-get install certbot python3-certbot-nginx
+   ```
+
+2. Obtain SSL certificate:
+   ```bash
+   sudo certbot --nginx -d api.yourdomain.com
+   ```
+
+3. Update Nginx configuration to use HTTPS:
+   ```nginx
+   server {
+       listen 443 ssl;
+       server_name api.yourdomain.com;
+
+       ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+
+       location / {
+           proxy_pass http://localhost:5000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+
+   server {
+       listen 80;
+       server_name api.yourdomain.com;
+       return 301 https://$server_name$request_uri;
+   }
+   ```
+
+4. Restart Nginx:
+   ```bash
+   sudo systemctl restart nginx
+   ```
+
 ## API Endpoints
 
 ### Authentication
@@ -138,6 +251,29 @@ The project uses a modular structure with Flask Blueprints:
    - PostgreSQL not running
    - Wrong port number (default is 5432)
    - Database or user doesn't exist
+
+### Domain Configuration Issues
+
+1. Check Nginx status:
+   ```bash
+   sudo systemctl status nginx
+   ```
+
+2. Check Nginx error logs:
+   ```bash
+   sudo tail -f /var/log/nginx/error.log
+   ```
+
+3. Verify SSL certificate:
+   ```bash
+   sudo certbot certificates
+   ```
+
+4. Common issues:
+   - DNS records not properly configured
+   - Firewall blocking ports 80/443
+   - SSL certificate expired
+   - Nginx configuration syntax errors
 
 ## Documentation
 
