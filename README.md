@@ -252,6 +252,109 @@ The project uses a modular structure with Flask Blueprints:
    - Wrong port number (default is 5432)
    - Database or user doesn't exist
 
+### Database Initialization Errors
+
+If you encounter "no password supplied" error when running `python -m app.init_db`:
+
+1. Check your `.env` file format:
+   ```
+   # Correct format:
+   DATABASE_URL=postgresql://username:password@localhost:5432/user_management
+   
+   # Make sure there are no spaces around the = sign
+   # Make sure the password is properly URL-encoded if it contains special characters
+   ```
+
+2. Verify the database exists:
+   ```bash
+   sudo -u postgres psql
+   ```
+   ```sql
+   \l  -- List all databases
+   CREATE DATABASE user_management;  -- Create if doesn't exist
+   ```
+
+3. Verify user permissions:
+   ```sql
+   -- Connect as postgres user
+   sudo -u postgres psql
+   
+   -- Create user if doesn't exist
+   CREATE USER myuser WITH PASSWORD 'mypassword';
+   
+   -- Grant privileges
+   GRANT ALL PRIVILEGES ON DATABASE user_management TO myuser;
+   
+   -- Connect to the database
+   \c user_management
+   
+   -- Grant schema privileges
+   GRANT ALL ON SCHEMA public TO myuser;
+   ```
+
+4. Test connection with psql:
+   ```bash
+   # Try connecting with the same credentials as in DATABASE_URL
+   psql "postgresql://myuser:mypassword@localhost:5432/user_management"
+   ```
+
+5. If using environment variables, make sure they are loaded:
+   ```bash
+   # Install python-dotenv if not already installed
+   pip install python-dotenv
+   
+   # Verify .env file is being read
+   python -c "from dotenv import load_dotenv; import os; load_dotenv(); print(os.getenv('DATABASE_URL'))"
+   ```
+
+### PostgreSQL Authentication Issues
+
+If you encounter "Peer authentication failed" error when trying to connect as postgres user:
+
+1. Find pg_hba.conf location:
+   ```bash
+   sudo find / -name "pg_hba.conf"
+   ```
+
+2. Edit pg_hba.conf:
+   ```bash
+   sudo nano /etc/postgresql/[version]/main/pg_hba.conf
+   ```
+
+3. Change authentication method from 'peer' to 'md5':
+   ```
+   # Find this line:
+   local   all             postgres                                peer
+   
+   # Change it to:
+   local   all             postgres                                md5
+   ```
+
+4. Restart PostgreSQL:
+   ```bash
+   sudo systemctl restart postgresql
+   ```
+
+5. Set password for postgres user:
+   ```bash
+   sudo -u postgres psql
+   ```
+   ```sql
+   ALTER USER postgres WITH PASSWORD 'your_password';
+   ```
+
+6. Now you can connect using password:
+   ```bash
+   psql -U postgres -h localhost
+   # or
+   PGPASSWORD=your_password psql -U postgres
+   ```
+
+Remember to update your `.env` file with the new password:
+```
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/user_management
+```
+
 ### Domain Configuration Issues
 
 1. Check Nginx status:
