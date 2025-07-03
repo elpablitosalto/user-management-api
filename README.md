@@ -90,6 +90,83 @@ python -m app.init_db
 python wsgi.py
 ```
 
+## Starting the Application
+
+### Development Mode
+
+1. **Using wsgi.py (Recommended):**
+   ```bash
+   python wsgi.py
+   ```
+   The application will start on `http://localhost:5000`
+
+2. **Using Flask CLI:**
+   ```bash
+   export FLASK_APP=wsgi.py
+   export FLASK_ENV=development
+   flask run
+   ```
+
+3. **Using Python directly:**
+   ```bash
+   python -c "from app import create_app; app = create_app(); app.run(debug=True)"
+   ```
+
+### Production Mode
+
+1. **Using Gunicorn:**
+   ```bash
+   pip install gunicorn
+   gunicorn --workers 3 --bind 0.0.0.0:5000 wsgi:app
+   ```
+
+2. **Using uWSGI:**
+   ```bash
+   pip install uwsgi
+   uwsgi --http :5000 --module wsgi:app --processes 4 --threads 2
+   ```
+
+### Environment Variables
+
+You can customize the application startup by setting these environment variables:
+
+```bash
+# Database configuration
+export DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+
+# JWT configuration
+export JWT_SECRET_KEY="your-secret-key"
+
+# Flask configuration
+export FLASK_ENV="development"  # or "production"
+export FLASK_DEBUG="1"  # Enable debug mode
+
+# Server configuration
+export HOST="0.0.0.0"  # Bind to all interfaces
+export PORT="5000"     # Port number
+```
+
+### Docker (Optional)
+
+If you prefer using Docker:
+
+1. Create a `Dockerfile`:
+   ```dockerfile
+   FROM python:3.9-slim
+   WORKDIR /app
+   COPY requirements.txt .
+   RUN pip install -r requirements.txt
+   COPY . .
+   EXPOSE 5000
+   CMD ["gunicorn", "--bind", "0.0.0.0:5000", "wsgi:app"]
+   ```
+
+2. Build and run:
+   ```bash
+   docker build -t user-management-api .
+   docker run -p 5000:5000 user-management-api
+   ```
+
 ## Domain Configuration
 
 ### Using Nginx as Reverse Proxy
